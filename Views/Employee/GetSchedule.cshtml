@@ -1,0 +1,51 @@
+@model EmployeeWeeklyViewModel
+@using EmployeeClockinSystem.ViewModels  
+
+@{
+    var startDate = Model.StartDate;
+    var endDate = Model.EndDate;
+    var daysOfWeek = Enumerable.Range(0, 7).Select(offset => startDate.AddDays(offset)).ToList();
+}
+
+@{
+    ViewData["Title"] = "My Schedule";
+}
+
+<!-- Date Navigation -->
+<div class="mt-5">
+    <a href="@Url.Action("GetSchedule", new { startDate = startDate.AddDays(-7), endDate = startDate.AddDays(0) })" class="btn btn-outline-primary">Previous Week</a>
+    <a href="@Url.Action("GetSchedule", new { startDate = endDate.AddDays(0), endDate = endDate.AddDays(7) })" class="btn btn-outline-primary">Next Week</a>
+</div>
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Employee</th>
+            @foreach (var day in daysOfWeek)
+            {
+                <th>@day.DayOfWeek <br /> @day.ToString("dd/MM/yyyy")</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>@Model.EmployeeName </td>
+            
+            @foreach (var day in daysOfWeek)
+            {
+                var scheduleForDay = Model.Schedules.FirstOrDefault(s => s.StartDate.Date == day.Date);
+                
+                    @if (scheduleForDay != null)
+                    {
+                       <td> @scheduleForDay.StartDate  - @scheduleForDay.EndDate</td>
+                    }
+                    else
+                    {
+                     <td>-</td>
+                    }
+                
+            }
+        </tr>
+    </tbody>
+    
+</table>

@@ -1,0 +1,157 @@
+@model Employee;
+
+@{
+    ViewBag.Title = "Dashboard";
+}
+
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <h2>Welcome to the Dashboard</h2>
+            <p class="lead">Employee ID: @Model.EmployeeId</p>
+            <p class="lead">Employee Name: @Model.FullName</p>
+
+            <div id="digitalWatch" class="display-4 mb-4">00:00:00</div>
+
+            <div id="messageDisplay" class="alert alert-warning w-50 m-auto" style="display: none;" role="alert">
+
+            </div>
+            <form asp-controller="Employee" asp-action="ClockIn" method="post">
+                <button id="clockInButton" type="submit" class="btn btn-success m-2" @(ViewBag.HasClockedIn ? "disabled"
+                    : "")>Clock In</button>
+
+            </form>
+            <form asp-controller="Employee" asp-action="ClockOut" method="post">
+                <button id="clockOutButton" class="btn btn-danger m-2" @(ViewBag.HasClockedIn ? "" : "disabled")>Clock
+                    Out</button>
+            </form>
+            <div>
+                <p class="d-inline-block">Last punch: </p>
+                <p class="d-inline-block" id="lastPunch"> @ViewBag.LastPunch </p>
+            </div>
+
+
+
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <script>
+
+        // Digital Watch Logic
+        function updateDigitalWatch() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            document.getElementById('digitalWatch').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Update the watch immediately and then every second
+        updateDigitalWatch();
+        setInterval(updateDigitalWatch, 1000);
+
+
+        document.getElementById("clockInButton").addEventListener("click", function (event) {
+            event.preventDefault();
+            handleClockAction('/Employee/ClockIn', this);
+        });
+
+        document.getElementById("clockOutButton").addEventListener("click", function (event) {
+            event.preventDefault();
+            handleClockAction('/Employee/ClockOut', this);
+        });
+
+
+        let currentLocation = null;  // to store the most recent location
+        let watchId;  // to keep track of the watcher
+
+        // Start watching user's location as soon as the page loads
+
+
+
+        if (navigator.geolocation) {
+            watchId = navigator.geolocation.watchPosition(position => {
+                currentLocation = {
+                    Latitude: position.coords.latitude,
+                    Longitude: position.coords.longitude
+                };
+                console.log(currentLocation);
+            }, error => {
+                console.error("Error fetching geolocation:", error.message);
+            },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5,
+                    maximumAge: 0
+                });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+
+        function handleClockAction(endpoint, buttonToDisable) {
+            if (currentLocation) {
+                postData(endpoint, currentLocation)
+                    .then(data => {
+                        if (data && data.message) {
+                            const messageDisplayElement = document.getElementById('messageDisplay');
+                            messageDisplayElement.textContent = data.message;
+                            messageDisplayElement.style.display = "block";
+
+                            if (data.lastPunchType == "ClockIn") {
+                                document.getElementById("clockInButton").disabled = true;
+                                document.getElementById("clockOutButton").disabled = false;
+                            } else if (data.lastPunchType == "ClockOut") {
+                                document.getElementById("clockInButton").disabled = false;
+                                document.getElementById("clockOutButton").disabled = true;
+                            }
+
+                            // Update the last punch information
+                            if(data.lastPunchType)
+                            document.getElementById('lastPunch').textContent = data.lastPunchType + " " + data.lastPunchTimestamp;
+                        } else {
+                            alert("Unexpected response format.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("An error occurred. Check console for details.");
+                    });
+            } else {
+                alert("Location is not yet available. Please wait.");
+            }
+        }
+
+        function postData(endpoint, data) {
+            return fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Network response was not OK');
+                });
+        }
+
+        // Stop watching the user's location when the page is unloaded or navigated away from
+        window.onunload = function () {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
+
+
+    </script>
+}

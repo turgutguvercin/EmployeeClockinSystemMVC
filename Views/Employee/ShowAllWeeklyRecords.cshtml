@@ -1,0 +1,84 @@
+@model IEnumerable<EmployeeWeeklyViewModel>
+@using EmployeeClockinSystem.ViewModels;
+
+<h2>Weekly Records</h2>
+@{
+    var startDate = ViewBag.StartDate ?? DateTime.Now.AddDays(1 - (int)DateTime.Now.DayOfWeek);
+    var endDate = ViewBag.EndDate ?? startDate.AddDays(7);
+    var daysOfWeek = Enumerable.Range(0, 7).Select(offset => startDate.AddDays(offset)).ToList();
+}
+
+<p>@startDate.ToShortDateString() - @endDate.ToShortDateString()</p>
+<a href="@Url.Action("ShowAllWeeklyRecords", new { startDate = startDate.AddDays(-7), endDate = endDate.AddDays(-7) })"
+    class="btn btn-outline-primary">Previous Week</a>
+<a href="@Url.Action("ShowAllWeeklyRecords", new { startDate = startDate.AddDays(7), endDate = endDate.AddDays(7) })"
+    class="btn btn-outline-primary">Next Week</a>
+
+<table class="table w-auto">
+    <thead>
+        <tr>
+            <th>Employee</th>
+            @foreach (var day in daysOfWeek)
+            {
+                <th>@day.DayOfWeek</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var employee in Model)
+        {
+            var weeklyRecords = daysOfWeek.Select(day => employee.Records.Where(r => r.ClockIn.Date == day.Date)).ToList();
+            var weeklySchedules = daysOfWeek.Select(day => employee.Schedules.FirstOrDefault(s => s.StartDate.Date <= day.Date && s.EndDate.Date >= day.Date)).ToList();
+            
+            <tr>
+                <td>@employee.EmployeeName</td>
+                
+                @for(int i = 0; i < daysOfWeek.Count; i++)
+                {
+                    var recordsForDay = weeklyRecords[i];
+                    var scheduleForDay = weeklySchedules[i];
+
+                    <td>
+                        @if (scheduleForDay != null)
+                        {
+                            <p>
+                                Sch: @scheduleForDay.StartDate.ToString("hh:mm tt") - @scheduleForDay.EndDate.ToString("hh:mm tt")
+                            </p>
+                        }
+                        else
+                        {
+                            <p>No Schedule</p>
+                        }
+
+                        @foreach (var record in recordsForDay)
+                        {
+                            <p>
+                                In: @record.ClockIn.ToString("hh:mm tt") <br />
+                                Out: @(record.ClockOut.HasValue ? record.ClockOut.Value.ToString("hh:mm tt") : "Pending")<br />
+                                 
+                            
+                            @if (record.ClockOut.HasValue)
+                            {
+                                TimeSpan duration = record.ClockOut.Value - record.ClockIn;
+                                @($"{duration.Hours} h {duration.Minutes} m")
+                            }
+                            else
+                            {
+                                @:Pending
+                            } 
+                            </p>    
+                           
+                            
+                                                  
+                        }
+                            
+                            @if (!recordsForDay.Any())
+                            {
+                                <p>No Record</p>
+                            }
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>

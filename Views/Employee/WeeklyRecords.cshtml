@@ -1,0 +1,61 @@
+@model EmployeeWeeklyViewModel
+@using EmployeeClockinSystem.ViewModels
+
+
+
+<h2>@Model.EmployeeName's Weekly Records</h2>
+<p>@Model.StartDate.ToShortDateString() - @Model.EndDate.ToShortDateString()</p>
+<a href="@Url.Action("WeeklyRecords", new { startDate = Model.StartDate.AddDays(-7), endDate = Model.EndDate.AddDays(-7) })"
+    class="btn btn-outline-primary">Previous Week</a>
+<a href="@Url.Action("WeeklyRecords", new { startDate = Model.StartDate.AddDays(7), endDate = Model.EndDate.AddDays(7) })"
+    class="btn btn-outline-primary">Next Week</a>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Day</th>
+            <th>Scheduled</th>
+            <th>Duration</th>
+        </tr>
+    </thead>
+    <tbody>
+       @{
+    var uniqueDates = Model.Records.Select(r => r.ClockIn.Date).Distinct();
+}
+
+@foreach (var date in uniqueDates)
+{
+    var dayRecords = Model.Records.Where(r => r.ClockIn.Date == date).ToList();
+    var schedule = Model.Schedules.FirstOrDefault(s => s.StartDate.Date == date);
+
+    <tr>
+        <td> <b> @date.DayOfWeek.ToString()</b></td>
+        <td> <b>@(schedule != null ? $"{schedule.StartDate} - {schedule.EndDate}" : "No Schedule")</b></td>
+ 
+        @foreach (var record in dayRecords)
+        {
+            <tr>
+            <td class="text-success">Clock In @record.ClockIn.ToString("hh:mm tt")</td>
+            <td class="text-danger">Clock Out @(record.ClockOut.HasValue ? record.ClockOut.Value.ToString("hh:mm tt") : "Pending")</td>
+            <td>
+                @if (record.ClockOut.HasValue)
+                {
+                    TimeSpan duration = record.ClockOut.Value - record.ClockIn;
+                    @($"{duration.Hours} hours {duration.Minutes} minutes")
+                }
+                else
+                {
+                    @:Pending
+                }
+            </td>
+            </tr>
+        }
+        
+    </tr>
+}
+
+    </tbody>
+</table>
+
+
+
+

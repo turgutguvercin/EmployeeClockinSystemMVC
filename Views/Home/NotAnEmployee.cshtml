@@ -1,0 +1,24 @@
+@{
+    Layout = "_Layout";  // Assuming you have a layout page. Adjust if you have a different layout or none.
+    ViewBag.Title = "Not an Employee";
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-danger">
+                <h4 class="alert-heading">Access Denied!</h4>
+                <p>Sorry, you are not recognized as an employee in our system.</p>
+                <hr>
+                <p class="mb-0">
+                    If you believe this is an error, please contact the system administrator.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <a href="/Account/Logout" class="btn btn-primary">Log out</a>
+        </div>
+    </div>
+</div>

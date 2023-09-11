@@ -1,0 +1,43 @@
+@using EmployeeClockinSystem.ViewModels;
+@model List<AccountUserViewModel>
+
+@{
+    ViewBag.Title = "All Users";
+}
+
+<h2>All Users</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Employee Name</th>
+            <th>Position</th>
+            <th>Actions</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model)
+        {
+            var userActionUrl = @Url.Action("EditUser", "Account", new { UserId = user.UserId });
+            <tr>
+                <td>@user.UserEmail</td>
+                <td>@(user.EmployeeName ?? "Not Registered")</td>
+                <td>@user.Position</td>
+                <td>
+                    <a href="@userActionUrl" class="btn btn-primary">Register / Edit</a>
+                </td>
+                <td>
+                    <a class="btn btn-warning text-white @(user.IsEmployee ? "" : "disabled" )" href="@userActionUrl"
+                        aria-disabled="@(user.IsEmployee ? "false" : "true")">Delete Employee</a>
+                </td>
+                <td>
+                    <a class="btn btn-danger" href="@userActionUrl">Delete Account</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>

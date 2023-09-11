@@ -1,0 +1,182 @@
+@using EmployeeClockinSystem.ViewModels;
+@model CreateScheduleViewModel;
+
+
+@{
+    var startDate = ViewBag.StartDate ?? DateTime.Now.AddDays(1 - (int)DateTime.Now.DayOfWeek);// Start of next week
+    var daysOfWeek = Enumerable.Range(0, 7).Select(offset => Model.StartDateOfWeek.AddDays(offset)).ToList();
+    int currentRowIndex = 0;
+}
+
+<h2>Create Schedule for Employee</h2>
+
+        @if (TempData["Error"] != null)
+    {
+        <div class="col-md-12 alert alert-danger">
+            <span><b>Sorry!</b> - @TempData["Error"] </span>
+        </div>
+    }
+
+    
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+
+<div class="mt-3">
+    @if (startDate > DateTime.Now.AddDays(1 - (int)DateTime.Now.DayOfWeek))
+{
+    <a href="@Url.Action("CreateSchedule", new { userDefinedStartDate = startDate.AddDays(-7) })" class="btn btn-outline-primary">Previous Week</a>
+}
+else{
+      <a href="@Url.Action("CreateSchedule", new { userDefinedStartDate = startDate.AddDays(-7) })" class="btn btn-outline-primary disabled">Previous Week</a>
+}
+    <a href="@Url.Action("CreateSchedule", new { userDefinedStartDate = startDate.AddDays(7)})" class="btn btn-outline-primary">Next Week</a>
+</div>
+
+<form method="post" asp-action="SaveSchedule" asp-controller="Employee">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                @foreach (var day in daysOfWeek)
+                {
+                    <th>@day.DayOfWeek <br /> @day.ToString("dd/MM/yyyy")</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in ViewData["employees"] as IEnumerable<Employee>)
+            {
+                <tr>
+                    <td>@employee.FullName</td>
+                    @foreach (var day in daysOfWeek)
+                    {
+                        var key = $"{employee.EmployeeId}-{day:yyyy-MM-dd}";
+                        var existingSchedule = Model.ScheduleLookup.ContainsKey(key) ? Model.ScheduleLookup[key] : null;
+                       
+                        <td>
+                            <div class="d-flex flex-column align-items-start mb-2">
+                                <label class="mb-1">Start: 
+                                    <input name="startDateTime[@employee.EmployeeId][@day.ToString("dd/MM/yyyy")]" 
+                                           type="time" 
+                                           class="start-time-input form-control" 
+                                           value="@(existingSchedule?.StartDate.TimeOfDay.ToString())" 
+                                           required/>
+                                </label>
+                                <label class="mb-1">End: 
+                                    <input name="endDateTime[@employee.EmployeeId][@day.ToString("dd/MM/yyyy")]" 
+                                           type="time" 
+                                           class="end-time-input form-control" 
+                                           value="@(existingSchedule?.EndDate.TimeOfDay.ToString())"
+                                           required />
+                                </label>
+                                
+                                <div class="form-check mb-2">
+                                    <input type="checkbox"
+                                            class="form-check-input end-time-next-day-input" 
+                                            id="end-next-day-@employee.EmployeeId-@day.ToString("dd/MM/yyyy")"
+                                            @(existingSchedule != null && existingSchedule.EndDate.Date == existingSchedule.StartDate.Date.AddDays(1) ? "checked" : "") />
+                                    <label class="form-check-label"
+                                        for="end-next-day-@employee.EmployeeId-@day.ToString("dd/MM/yyyy")">End time next day</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input toggle-off-checkbox" 
+                                           id="off-@employee.EmployeeId-@day.ToString("dd/MM/yyyy")"
+                                           @(existingSchedule?.IsOff == null ? "checked":"") />
+                                         
+                                    <label class="form-check-label"
+                                        for="off-@employee.EmployeeId-@day.ToString("dd/MM/yyyy")">Off</label>
+                                </div>
+
+                                <input type="hidden" name="PostedSchedules[@currentRowIndex].EmployeeId" value="@employee.EmployeeId" class="employeeId" />
+                                <input type="hidden" name="PostedSchedules[@currentRowIndex].StartDate" class="start-datetime-output" value="@(existingSchedule?.StartDate)" />
+                                <input type="hidden" name="PostedSchedules[@currentRowIndex].EndDate" class="end-datetime-output" value="@(existingSchedule?.EndDate)"  />
+                                <input type="hidden" name="PostedSchedules[@currentRowIndex].isOff" value="false" class="is-off-hidden" />
+                                <input type="hidden" name="ScheduleLookup" value="@Model.ScheduleLookup" />
+                            </div>
+                        </td>
+                        currentRowIndex++;
+                    }
+                </tr>
+            }
+
+        </tbody>
+    </table>
+    <input type="submit" value="Save Schedules" class="btn btn-primary" />
+    <input type="hidden" name="StartDateOfWeek" value="@Model.StartDateOfWeek.Date">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    function updateDatetimeFields(element) {
+        const cell = element.closest('td');
+        console.log(cell);
+        const startTimeInput = cell.querySelector('.start-time-input');
+        const dateParts = startTimeInput.name.split('[')[2].split(']')[0].split('/');
+
+        const year = parseInt(dateParts[2]);
+        const month = parseInt(dateParts[1]) - 1; // JavaScript months are 0-based
+        const dayNum = parseInt(dateParts[0]);
+
+        const date = new Date(year, month, dayNum);
+        const endTimeInput = cell.querySelector('.end-time-input');
+        const nextDayCheckbox = cell.querySelector('.end-time-next-day-input');
+        const startTimeOutput = cell.querySelector('.start-datetime-output');
+        const endTimeOutput = cell.querySelector('.end-datetime-output');
+
+           if (!startTimeInput.value || !endTimeInput.value) {
+                return;  // Exit if either value is missing or invalid
+            }
+
+        const startTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), parseInt(startTimeInput.value.split(':')[0]), parseInt(startTimeInput.value.split(':')[1]));
+        const endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), parseInt(endTimeInput.value.split(':')[0]), parseInt(endTimeInput.value.split(':')[1]));
+
+        if (nextDayCheckbox.checked) {
+            endTime.setDate(endTime.getDate() + 1);
+        }
+
+        startTimeOutput.value = startTime.toLocaleString();
+        endTimeOutput.value = endTime.toLocaleString();
+    }
+
+    function toggleTimeInputsBasedOnCheckbox(checkbox) {
+        let container = checkbox.parentElement.parentElement;
+        const isOffHidden = container.querySelector('.is-off-hidden');
+        isOffHidden.value = checkbox.checked ? "true" : "false";  // Change the hidden input value based on checkbox
+
+        container.querySelectorAll('.start-time-input, .end-time-input, .end-time-next-day-input').forEach(function (input) {
+            input.disabled = checkbox.checked;
+        });
+    }
+
+    // Listen for changes in any time input or checkbox
+    document.querySelectorAll('.start-time-input, .end-time-input, .end-time-next-day-input').forEach(element => {
+        element.addEventListener('change', function () {
+            updateDatetimeFields(element);
+        });
+    });
+
+    // React on checkbox changes and also initialize state
+    document.querySelectorAll('.toggle-off-checkbox').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            toggleTimeInputsBasedOnCheckbox(checkbox);
+        });
+
+        // Initialize checkbox state
+        toggleTimeInputsBasedOnCheckbox(checkbox);
+    });
+
+    // Populate the hidden fields immediately before submitting the form
+    document.querySelector('form').addEventListener('submit', function () {
+        document.querySelectorAll('.start-time-input, .end-time-input, .end-time-next-day-input').forEach(element => {
+            updateDatetimeFields(element);
+        });
+    });
+});
+
+</script> 
